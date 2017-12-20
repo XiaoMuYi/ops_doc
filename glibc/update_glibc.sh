@@ -1,7 +1,7 @@
 #!/bin/bash
 ## name XiaoYi
 ## email: yang972711021@gmail.com
-## 解决 Centos 6 出现 libc.so.6: version `GLIBC_2.14' not found问题
+## 解决Centos 6出现libc.so.6: version 'GLIBC_2.14' not found问题
 
 
 strings /lib64/libc.so.6 |grep GLIBC_
