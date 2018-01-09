@@ -23,3 +23,10 @@ DELETE FROM trends_uint WHERE (UNIX_TIMESTAMP(NOW()) - clock) > (@trends_interva
 ```
 mysql zabbix -p ./clean_history.sql
 ```
+##### 释放空间
+执行完以上操作之后，你会发现磁盘空间并没有释放，还需要执行如下语句:
+```
+ALTER TABLE db.table ENGINE = InnoDB;
+举例如下：
+ALTER TABLE zabbix.alerts ENGINE = InnoDB;
+```
