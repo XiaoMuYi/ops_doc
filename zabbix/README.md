@@ -32,3 +32,19 @@ ALTER TABLE zabbix.alerts ENGINE = InnoDB;
 ```
 ##### 提示：
 在执行该SQL语句"ALTER TABLE db.table ENGINE = InnoDB;"需要谨慎，因为会锁表。所以，建议在执行的时候尽量在数据空闲时间操作。并且，在执行的时候遵循从小数据的表到大数据的表，此时会消耗大量的磁盘IO以及占用临时空间。
+### 删除ZABBIX历史记录
+上面的命令，在数据小的情况确实好使。但是...当你的数据到达一定的量的时候，可能效果极其的慢，这时候我们需要暴力一点。命令如下：
+```
+CREATE TABLE `history_uint_tmp` (
+	`itemid`                 bigint unsigned                           NOT NULL,
+	`clock`                  integer         DEFAULT '0'               NOT NULL,
+	`value`                  bigint unsigned DEFAULT '0'               NOT NULL,
+	`ns`                     integer         DEFAULT '0'               NOT NULL
+) ENGINE=InnoDB;
+CREATE INDEX `history_uint_1` ON `history_uint_tmp` (`itemid`,`clock`);
+
+insert into history_uint_tmp select * from history_uint;
+drop table history_uint;
+alter table history_uint_tmp rename to history_uint;
+```
+谨慎骚操作，以上只适用于监控这种不重要的数据，其他环境操作需谨慎；
