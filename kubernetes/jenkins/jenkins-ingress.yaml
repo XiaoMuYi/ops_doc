@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-ingress
+  namespace: jenkins-cicd
+spec:
+  selector:
+    k8s-app: jenkins
+  ports:
+  - name: web
+    port: 8080
+    targetPort: 8080
+  - name: agent
+    port: 50000
+    targetPort: 50000
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: jenkins-ingress
+  namespace: jenkins-cicd
+spec:
+  rules:
+  - host: jenkins.testche.com
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: jenkins-ingress
+          servicePort: web
