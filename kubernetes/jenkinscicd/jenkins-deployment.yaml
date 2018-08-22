@@ -1,36 +1,42 @@
 ---
 apiVersion: apps/v1beta2
-kind: Deployment
+kind: Deployment  
 metadata:
   name: jenkins
+  namespace: jenkins
   labels:
-    k8s-app: jenkins
-  namespace: jenkins-cicd
+    app: jenkins
 spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
   selector:
     matchLabels:
-      k8s-app: jenkins
-  replicas: 1
-  strategy:  
-    type: RollingUpdate  
-    rollingUpdate:  
-      maxSurge: 2  
-      maxUnavailable: 0
+      app: jenkins
   template:
     metadata:
-      name: jenkins
       labels:
-        k8s-app: jenkins
+        app: jenkins
     spec:
-      terminationGracePeriodSeconds: 10
+      securityContext:
+        fsGroup: 1000
       serviceAccount: "jenkins-admin"
       containers:
         - name: jenkins
           image: hexun/jenkins:2.135-apline
           imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-            - containerPort: 50000
+          ports:  
+            - containerPort: 8080  
+            - containerPort: 50000  
+          volumeMounts:
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+            - name: host-time
+              mountPath: /etc/localtime
+              readOnly: true
           resources:
             limits:
               cpu: 1
@@ -46,12 +52,6 @@ spec:
                   divisor: 1Mi
             - name: JAVA_OPTS
               value: "-Xmx$(LIMITS_MEMORY)m -XshowSettings:vm -Dhudson.slaves.NodeProvisioner.initialDelay=0 -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85 -Duser.timezone=Asia/Shanghai"
-          volumeMounts:
-            - name: jenkins-home
-              mountPath: /var/jenkins_home
-            - name: host-time
-              mountPath: /etc/localtime
-              readOnly: true
           livenessProbe:
             httpGet:
               path: /login
@@ -78,8 +78,6 @@ spec:
           - name: ndots
             value: "2"
           - name: edns0
-      securityContext:
-        fsGroup: 1000
       volumes:
         - name: jenkins-home
           emptyDir: {}
