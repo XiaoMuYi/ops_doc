@@ -48,10 +48,13 @@ data:
   Corefile: |
     .:53 {
         errors
-        log stdout
         health
-        kubernetes cluster.local 10.254.0.0/16
-        prometheus
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          upstream
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
         proxy . /etc/resolv.conf
         cache 30
         reload

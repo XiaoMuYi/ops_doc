@@ -49,8 +49,6 @@ data:
     .:53 {
         errors
         health
-
-        forward . 8.8.8.8:53 172.17.0.250:53
         kubernetes CLUSTER_DOMAIN REVERSE_CIDRS {
           pods insecure
           upstream

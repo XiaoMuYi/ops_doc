@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Deploys CoreDNS to a cluster currently running Kube-DNS.
 
 show_help () {
@@ -48,3 +49,4 @@ if [[ -z $CLUSTER_DNS_IP ]]; then
 fi
 
 sed -e s/CLUSTER_DNS_IP/$CLUSTER_DNS_IP/g -e s/CLUSTER_DOMAIN/$CLUSTER_DOMAIN/g -e "s?REVERSE_CIDRS?$REVERSE_CIDRS?g" $YAML_TEMPLATE
+
