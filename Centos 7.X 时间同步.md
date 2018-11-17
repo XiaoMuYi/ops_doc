@@ -117,7 +117,7 @@ keys /etc/ntp/keys
 $ systemctl start ntpd
 $ systemctl enable ntpd
 ```
-#### 2.2 chrony
+#### 2.2 Chrony
 Chrony是一个开源的自由软件，像CentOS 7或基于RHEL 7操作系统，已经是默认服务，默认配置文件在 /etc/chrony.conf 它能保持系统时间与时间服务器（NTP）同步，让时间始终保持同步。相对于NTP时间同步软件，占据很大优势。其用法也很简单。
 
 Chrony有两个核心组件，分别是：
@@ -203,4 +203,5 @@ timedatectl set-timezone Asia/Shanghai      # 设置时区
 timedatectl set-ntp yes                     # 同步NTP服务器，可以no
 timedatectl set-local-rtc 1                 # 将硬件时钟调整为与本地时钟一致
 ```
-硬件时钟默认使用UTC时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改。修改后系统会出现警告。安装完服务器之后，首先到官方 NTP 公共时间服务器池NTP Public Pool Time Servers（www.pool.ntp.org） ，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现 NTP 服务器列表。
+硬件时钟默认使用UTC时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改,修改后系统会出现警告。
+安装完服务器之后，首先到官方 NTP 公共时间服务器池NTP Public Pool Time Servers（www.pool.ntp.org） ，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现 NTP 服务器列表。
