@@ -203,5 +203,4 @@ timedatectl set-timezone Asia/Shanghai      # 设置时区
 timedatectl set-ntp yes                     # 同步NTP服务器，可以no
 timedatectl set-local-rtc 1                 # 将硬件时钟调整为与本地时钟一致
 ```
-#### 注意:  
 硬件时钟默认使用UTC时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改。修改后系统会出现警告。安装完服务器之后，首先到官方 NTP 公共时间服务器池NTP Public Pool Time Servers（www.pool.ntp.org） ，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现 NTP 服务器列表。
