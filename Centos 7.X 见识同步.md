@@ -5,25 +5,20 @@
 #### 1.1 GMT、UTC、CST、DST 时间
 ##### (1) UTC
 整个地球分为二十四时区，每个时区都有自己的本地时间。在国际无线电通信场合，为了统一起见，使用一个统一的时间，称为通用协调时(UTC, Universal Time Coordinated)。
-
 ##### (2) GMT
 格林威治标准时间 (Greenwich Mean Time)指位于英国伦敦郊区的皇家格林尼治天文台的标准时间，因为本初子午线被定义在通过那里的经线。(UTC与GMT时间基本相同，本文中不做区分)
-
 ##### (3) CST
 中国标准时间 (China Standard Time)
 Default
 GMT + 8 = UTC + 8 = CST
-
 ##### (4) DST
 夏令时(Daylight Saving Time) 指在夏天太阳升起的比较早时，将时钟拨快一小时，以提早日光的使用。（中国不使用）
 
 #### 1.2 硬件时钟和系统时钟
-(1) 硬件时钟  
+##### (1) 硬件时钟  
 RTC(Real-Time Clock)或CMOS时钟，一般在主板上靠电池供电，服务器断电后也会继续运行。仅保存日期时间数值，无法保存时区和夏令时设置。
-
-(2) 系统时钟  
+##### (2) 系统时钟  
 一般在服务器启动时复制RTC时间，之后独立运行，保存了时间、时区和夏令时设置。
-
 
 ### 二、时间同步方式
 #### 2.1 使用 NTP 进行时间同步
@@ -208,5 +203,5 @@ timedatectl set-timezone Asia/Shanghai      # 设置时区
 timedatectl set-ntp yes                     # 同步NTP服务器，可以no
 timedatectl set-local-rtc 1                 # 将硬件时钟调整为与本地时钟一致
 ```
-+ 注意:  
+注意:  
 硬件时钟默认使用UTC时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改。修改后系统会出现警告。安装完服务器之后，首先到官方 NTP 公共时间服务器池NTP Public Pool Time Servers（www.pool.ntp.org） ，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现 NTP 服务器列表。
