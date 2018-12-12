@@ -48,3 +48,12 @@ drop table history_uint;
 alter table history_uint_tmp rename to history_uint;
 ```
 谨慎骚操作，以上只适用于监控这种不重要的数据，其他环境操作需谨慎；
+
+### Firewalld 允许 zabbix server 访问
+```
+firewall-cmd --add-service={http,https} --permanent
+firewall-cmd --add-port={10051/tcp,10050/tcp} --permanent
+
+firewall-cmd --reload
+firewall-cmd --list-all
+```
