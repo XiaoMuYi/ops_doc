@@ -201,4 +201,4 @@ $ cat ./10666.stack |grep '29aa' -C 8
 * I/O 等待 CPU 过高，说明等待 I/O 的时间比较长，所以应该这种排查磁盘是否出现了 I/O 问题。  
 * 软中断和硬中断高，说明软中断或硬中断的处理程序占用了较多CPU，所以应该排查内核中的中断服务程序。  
 
-通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数。
+通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数。最后，放出淘宝大神常用java分析工具链接：https://github.com/oldratlee/useful-scripts ；
