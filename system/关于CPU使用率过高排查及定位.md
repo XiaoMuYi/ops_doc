@@ -115,9 +115,90 @@ Linux 2.6.32-573.el6.x86_64 (zbredis-30104)     09/14/2017  _x86_64_    (12 CPU)
 03:14:04 PM   11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
 ```
 **提示：**  
-　　irq: 硬件中断CPU用量；  
-　　sofr: 软件中断CPU用量；  
-　　steal: 耗费在服务其他租户的时间；  
-　　guest: 花在访客虚拟机的时间；  
+　　irq: 代表处理硬中断的 CPU 时间；  
+　　sofr: 代表处理软中断的 CPU 时间；  
+　　steal: 代表当系统运行在虚拟机中的时候，被其他虚拟机占用的 CPU 时间；  
+　　guest: 代表通过虚拟化运行其他操作系统的时间，也就是运行虚拟机的 CPU 时间；  
 
-重要关注列有 %user/%sys/%idle 。显示了每个CPU的用量以及用户态和内核态的时间比例。可以根据这些值查看那些跑到100%使用率（%user + %sys）的CPU，而其他CPU并未跑满可能是由单线程应用程序的负载或者设备中断映射造成。
+重要关注列有 %user、%sys、%idle 。显示了每个 CPU 的用量以及用户态和内核态的时间比例。可以根据这些值查看那些跑到100%使用率（%user + %sys）的 CPU，而其他 CPU 并未跑满可能是由单线程应用程序的负载或者设备中断映射造成。
+
+# CPU使用率过高排查思路及方式 
+
+---
+Linux 作为一个多任务操作系统，将每个 CPU 的时间划分为很短的时间片，再通过调度器轮流分配给各个任务使用
+通过实先定义的节拍率(内核用赫兹HZ标示)触发时间判断(全局变量jiffies记录)来进行维护 CPU 。节拍率是内核态运行，属于内核空间节拍率（可设置为 100、250、1000 等
+），而用户空间节拍率( USER_HZ)是一个固定设置（总是为100）。
+```
+$ grep 'CONFIG_HZ=' /boot/config-$(uname -r)    # 内核空间节拍率值
+CONFIG_HZ=1000
+```
+
+**方式一. perf 命令使用**
+```
+$ perf top
+Samples: 833  of event 'cpu-clock', Event count (approx.): 97742399
+Overhead  Shared Object       Symbol
+   7.28%  perf                [.] 0x00000000001f78a4
+   4.72%  [kernel]            [k] vsnprintf
+   4.32%  [kernel]            [k] module_get_kallsym
+   3.65%  [kernel]            [k] _raw_spin_unlock_irqrestore
+```
+**提示:**  
+　　Overhead：是该符号的性能事件在所有采样中的比例，用百分比来表示；  
+    Shared：是该函数或指令所在的动态共享对象（Dynamic Share Object），如内核、进程名、动态链接库名、内核模块名等；  
+    Object：动态共享对象的类型。比如 [.] 表示用户空间的可执行程序或者动态链接库，而 [k] 则表示内核空间；  
+    Symbol：是符号名，也就是函数名。当函数名未知时，用十六进制的地址来表示；  
+
+```
+# -g 开启调用关系分析，-p 指定 php-fpm 的进程号 21515
+$ perf top -g -p 21515
+
+# 使用 grep 查找函数调用
+$ grep $func_name -r $/code_path/
+```
+**方法二. Java 应用通过 jstat 命令**
+
+查找 PID 消耗 cpu 最高的进程号 
+```
+# 显示进程运行信息列表，按 P 安装 cpu 使用率排序
+$ top -c
+Tasks: 120 total,   1 running, 119 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+KiB Mem :  1014500 total,   114780 free,   236168 used,   663552 buff/cache
+KiB Swap:        0 total,        0 free,        0 used.   538608 avail Mem 
+
+  PID USER      PR  NI    VIRT    RES    SHR S %CPU %MEM     TIME+ COMMAND                                                                                                                                       
+10617 500       20   0 2239628  63184      0 S  0.3  6.2 123:27.71 /usr/local/java/bin/java -Djava.util.logging.config.file=/opt/tomcat/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.Clas+
+```
+
+查找 PID 消耗 cpu 最高的线程号
+```
+# 显示进程运行信息列表，按 P 安装 cpu 使用率排序
+$ top -Hp 10617
+top -Hp 10617
+top - 03:30:57 up 152 days,  2:00,  1 user,  load average: 0.00, 0.01, 0.00
+Threads:  41 total,   4 running,  37 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+KiB Mem :  1014500 total,   114284 free,   236568 used,   663648 buff/cache
+KiB Swap:        0 total,        0 free,        0 used.   538200 avail Mem 
+
+  PID USER      PR  NI    VIRT    RES    SHR S %CPU %MEM     TIME+ COMMAND                                                               
+10617 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.02 java                                                                 
+10666 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.63 java                                                                 
+10667 500       20   0 2239628  63184      0 S  0.0  6.2   1:09.09 java                                                                 
+10668 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java                                                                 
+10669 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java                                                                 
+10670 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java
+
+# 将消耗 cpu 最高的线程号从十进制转成十六进制，举例将线程号 `10666` 转为十六进制为 `29aa`;
+$ jstack -l 29aa > ./10666.stack
+$ cat ./10666.stack |grep '29aa' -C 8
+```
+
+**总结：**
+> * 用户 CPU 和 Nice CPU 高，说明用户态进程占用了较多的 CPU ，所以应该着种排查进程的性能问题。  
+> * 系统 CPU 高，说明内核态占用了较多 CPU ，所以应该着重排查内核线程或者系统调用的性能问题。  
+> * I/O 等待 CPU 过高，说明等待 I/O 的时间比较长，所以应该这种排查磁盘是否出现了 I/O 问题。  
+> * 软中断和硬中断高，说明软中断或硬中断的处理程序占用了较多CPU，所以应该排查内核中的中断服务程序。  
+
+通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数。
