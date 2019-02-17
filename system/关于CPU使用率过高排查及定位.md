@@ -1,7 +1,5 @@
-# CPU上下文切换 
-
 ---
-
+# CPU上下文切换 
 **CPU上下文切换是什么意思？**  
 Linux在同时运行多任务时，是通过轮流分配CPU的方式造成多任务同时运行的错觉。并通过`CPU寄存器` 和 `程序计数器`来记录任务从哪里加载、又从哪里运行。**CPU寄存器** 是CPU中内置的容量小，但速度极快的内存。而**程序计数器** 则是记录CPU正在执行的指令或者即将执行的下一条指令。他们是CPU执行任务前必须依赖的环境，因此称为 `CPU上下文`。
 
@@ -62,15 +60,6 @@ Linux 4.4.0-1065-aws (ip-172-31-25-95) 	02/16/19 	_x86_64_	(1 CPU)
 ```
  $ watch -d cat /proc/interrupts
   48:  836243176  xen-percpu-virq      timer0
- 49:          0  xen-percpu-ipi       resched0
- 50:          0  xen-percpu-ipi       callfunc0
- 51:          0  xen-percpu-virq      debug0
- 52:          0  xen-percpu-ipi       callfuncsingle0
- 53:          0  xen-percpu-ipi       spinlock0
- 54:        212   xen-dyn-event     xenbus
- 55:    2456228   xen-dyn-event     blkif
- 56:    8606407   xen-dyn-event     eth0
-NMI:          0   Non-maskable interrupts
 LOC:          0   Local timer interrupts
 SPU:          0   Spurious interrupts
 PMI:          0   Performance monitoring interrupts
@@ -78,13 +67,6 @@ IWI:         22   IRQ work interrupts
 RTR:          0   APIC ICR read retries
 RES:          0   Rescheduling interrupts
 CAL:          0   Function call interrupts
-TLB:          0   TLB shootdowns
-TRM:          0   Thermal event interrupts
-THR:          0   Threshold APIC interrupts
-DFR:          0   Deferred Error APIC interrupts
-MCE:          0   Machine check exceptions
-MCP:      43633   Machine check polls
-HYP:  847092680   Hypervisor callback interrupts
 ```
 **查看每个CPU统计信息**  
 多处理器统计信息工具，能够报告每个CPU的统计信息。
@@ -96,16 +78,6 @@ Linux 2.6.32-573.el6.x86_64 (zbredis-30104)     09/14/2017  _x86_64_    (12 CPU)
 03:14:04 PM  all    0.00    0.00    0.08    0.00    0.00    0.00    0.00    0.00   99.92
 03:14:04 PM    0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
 03:14:04 PM    1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM    9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM   10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
-03:14:04 PM   11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
 ```
 **提示：**  
 > * irq: 代表处理硬中断的 CPU 时间；  
@@ -116,7 +88,6 @@ Linux 2.6.32-573.el6.x86_64 (zbredis-30104)     09/14/2017  _x86_64_    (12 CPU)
 重要关注列有 %user、%sys、%idle 。显示了每个 CPU 的用量以及用户态和内核态的时间比例。可以根据这些值查看那些跑到100%使用率（%user + %sys）的 CPU，而其他 CPU 并未跑满可能是由单线程应用程序的负载或者设备中断映射造成。
 
 # CPU使用率过高排查思路及方式 
-
 ---
 Linux 作为一个多任务操作系统，将每个 CPU 的时间划分为很短的时间片，再通过调度器轮流分配给各个任务使用
 通过实先定义的节拍率(内核用赫兹HZ标示)触发时间判断(全局变量jiffies记录)来进行维护 CPU 。节拍率是内核态运行，属于内核空间节拍率（可设置为 100、250、1000 等
@@ -135,6 +106,11 @@ Overhead  Shared Object       Symbol
    4.72%  [kernel]            [k] vsnprintf
    4.32%  [kernel]            [k] module_get_kallsym
    3.65%  [kernel]            [k] _raw_spin_unlock_irqrestore
+# -g 开启调用关系分析，-p 指定 php-fpm 的进程号 21515
+$ perf top -g -p 21515
+
+# 使用 grep 查找函数调用
+$ grep $func_name -r $/code_path/
 ```
 **提示:**  
 > * Overhead：是该符号的性能事件在所有采样中的比例，用百分比来表示；  
@@ -142,13 +118,6 @@ Overhead  Shared Object       Symbol
 > * Object：动态共享对象的类型。比如 [.] 表示用户空间的可执行程序或者动态链接库，而 [k] 则表示内核空间；  
 > * Symbol：是符号名，也就是函数名。当函数名未知时，用十六进制的地址来表示；  
 
-```
-# -g 开启调用关系分析，-p 指定 php-fpm 的进程号 21515
-$ perf top -g -p 21515
-
-# 使用 grep 查找函数调用
-$ grep $func_name -r $/code_path/
-```
 **方法二. Java 应用通过 jstat 命令**
 
 查找 PID 消耗 cpu 最高的进程号 
@@ -179,7 +148,7 @@ KiB Swap:        0 total,        0 free,        0 used.   538200 avail Mem
 10617 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.02 java                                                                 
 10666 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.63 java                                                                 
 10667 500       20   0 2239628  63184      0 S  0.0  6.2   1:09.09 java                                                                 
-10668 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java                                                                 
+10668 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java                                      
 10669 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java                                                                 
 10670 500       20   0 2239628  63184      0 S  0.0  6.2   0:00.00 java
 
@@ -187,11 +156,16 @@ KiB Swap:        0 total,        0 free,        0 used.   538200 avail Mem
 $ jstack -l 29aa > ./10666.stack
 $ cat ./10666.stack |grep '29aa' -C 8
 ```
+**提示：**通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数，java 应用关于 CPU 排查已经有淘宝大神编写成 shell 脚本，可以通过[脚本工具快速定位](https://github.com/oldratlee/useful-scripts)。
 
 **总结：**
 * 用户 CPU 和 Nice CPU 高，说明用户态进程占用了较多的 CPU ，所以应该着种排查进程的性能问题。  
 * 系统 CPU 高，说明内核态占用了较多 CPU ，所以应该着重排查内核线程或者系统调用的性能问题。  
 * I/O 等待 CPU 过高，说明等待 I/O 的时间比较长，所以应该这种排查磁盘是否出现了 I/O 问题。  
-* 软中断和硬中断高，说明软中断或硬中断的处理程序占用了较多CPU，所以应该排查内核中的中断服务程序。  
+* 软中断和硬中断高，说明软中断或硬中断的处理程序占用了较多CPU，所以应该排查内核中的中断服务程序。 
 
-通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数，可以通过`[脚本工具快速定位](https://github.com/oldratlee/useful-scripts)` ；
+---
+# 系统的 CPU 使用率很高，但为啥却找不到高 CPU 的应用？
+遇到这样的非常规问题，我们可以猜想是否是短时应用导致。比如应用可能直接调用其他二进制程序，而这些程序通常运行时间比较短，无法通过 top 等工具发现。而另一种可能就是应用本身不停的重启，而启动过程的资源初始化占据了大量的CPU资源。  
+
+对于以上问题，我们可以通过 pstree 或者 [execsnoop](https://github.com/brendangregg/perf-tools) 找到它们的父进程，再从父进程所在的应用入手，排查问题的根源。
