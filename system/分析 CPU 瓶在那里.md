@@ -1,3 +1,5 @@
+# CPU 性能瓶颈分析
+
 ---
 # 如何理解系统负载
 ---
@@ -187,7 +189,7 @@ KiB Swap:        0 total,        0 free,        0 used.   538200 avail Mem
 $ jstack -l 29aa > ./10666.stack
 $ cat ./10666.stack |grep '29aa' -C 8
 ```
-**提示：**通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数，java 应用关于 CPU 排查已经有淘宝大神编写成 shell 脚本，可以通过[脚本工具快速定位](https://github.com/oldratlee/useful-scripts)。
+**提示：** 通过 top 、pidstat 等工具可以确认引发 CPU 性能问题的来源，然后再通过 perf 等工具排查引起性能问题的具体函数，java 应用关于 CPU 排查已经有淘宝大神编写成 shell 脚本，可以通过[脚本工具快速定位](https://github.com/oldratlee/useful-scripts)。
 
 **总结：**
 * 用户 CPU 和 Nice CPU 高，说明用户态进程占用了较多的 CPU ，所以应该着种排查进程的性能问题。  
@@ -221,3 +223,5 @@ $ cat ./10666.stack |grep '29aa' -C 8
 > * 2. 通过 `watch -d cat /proc/softirqs` 查看哪类软中断变化过大；
 > * 3. 通过 `sar -n DEV 1` 显示网络收发报告；
 > * 4. 通过 `tcpdump -i $network_name -n tcp port $service_port` 来抓取对应服务的流量数据包；
+
+
