@@ -1,4 +1,4 @@
-# 如何快速定位 CPU 性能瓶颈
+# 如何快速定位内存性能瓶颈
 
 ## Linux 系统是如何分配内存的以及回收内存
 Linux 内核为每个进程提供一个独立的虚拟地址空间（又分为内核空间和用户空间）。通过将虚拟内存地址映射到物理内存地址，为了完成内存映射，内核进程维护了一张页表（存储在 CPU 的内存管理单元 MMU 中）来记录虚拟地址与物理地址的映射关系。MMU 是以内存映射的最小单位“页”来管理内存，通常是 4KB，不过目前支持多级页表和大页。
@@ -59,17 +59,21 @@ WARNING: BCC can't handle sym look ups for /app
 
 ```
 
+### 内存回收原理
 在内存资源紧张时，linux 通过直接内存回收和定期扫描的方式来释放文件页和匿名页，以便把内存分配给更需要的进程使用。linux 内核通过 kswapd0 进程根据剩余内存的三个阈值（high/log/min，可通过 /proc/sys/vm/min_free_kbytes 进行设置，并可以通过 /proc/zoneinfo 来查看内存阈值。）来进行内存的回收操作。
 
 **提示：** 关于 hadoop 集群建议关 swap 提升性能。事实上不仅 hadoop，包括 ES 在内绝大部分 Java 的应用都建议关 swap，这个和 JVM 的 gc 有关，它在 gc 的时候会遍历所有用到的堆的内存，如果这部分内存是被 swap 出去了，遍历的时候就会有磁盘IO。
   
-可以参考这两篇文章：  
+**可以参考这两篇文章：**  
 https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html  
 https://dzone.com/articles/just-say-no-swapping  
 
 ## 内存使用率高定位方式
 1. 通过 free 工具确认当前系统已使用内存、buffer、cache等指标参数；
-2. 通过 top、ps 查看进程的内存使用情况；
-3. 通过 vmstat 和 pidstat 动态查看内存变化，观察缓存、缓冲区、Swap换入和换出的内存大小；
-4. 通过 cachestat、cachetop 观察每个进程缓存命中情况；
-5. 通过 bcc 工具中的 memleak 命令找出内存泄漏的相关函数；
+2. 如果发现大部分内存都被缓存占用，可以使用 vmstat 或者 sar 观察缓存的变化趋势，确认缓存是否继续增大；
+3. 如果继续增大，说明导致缓存升高的进程还在运行，此时通过 buffer/cacahe 分析工具 cachestat/cachetop/slabtop 等分析缓存被哪里占用；
+4. 如果未发现内存被 buffer/cache 占用，此时通过 top/ps/pidstat 工具定位内存最多的进程；
+5. 找到进程之后，可通过 pmap 分析进程地址空间中内存使用情况然后针对性优化即可；
+6. 通过 vmstat 或者 sar 发现内存不断增长，可以分析是否存在内存泄漏的问题。此时通过内存分析工具 memleak 检查内存是否泄漏；
+7. 如果存在内存泄漏，memleak 会输出内存泄漏的进程以及调用堆栈；
+
