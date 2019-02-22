@@ -69,11 +69,11 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configurat
 https://dzone.com/articles/just-say-no-swapping  
 
 ## 内存使用率高定位方式
-1. 通过 free 工具确认当前系统已使用内存、buffer、cache等指标参数；
-2. 如果发现大部分内存都被缓存占用，可以使用 vmstat 或者 sar 观察缓存的变化趋势，确认缓存是否继续增大；
-3. 如果继续增大，说明导致缓存升高的进程还在运行，此时通过 buffer/cacahe 分析工具 cachestat/cachetop/slabtop 等分析缓存被哪里占用；
-4. 如果未发现内存被 buffer/cache 占用，此时通过 top/ps/pidstat 工具定位内存最多的进程；
-5. 找到进程之后，可通过 pmap 分析进程地址空间中内存使用情况然后针对性优化即可；
-6. 通过 vmstat 或者 sar 发现内存不断增长，可以分析是否存在内存泄漏的问题。此时通过内存分析工具 memleak 检查内存是否泄漏；
-7. 如果存在内存泄漏，memleak 会输出内存泄漏的进程以及调用堆栈；
+> * 1. 通过 free 工具确认当前系统已使用内存、buffer、cache等指标参数；
+> * 2. 如果发现大部分内存都被缓存占用，可以使用 vmstat 或者 sar 观察缓存的变化趋势，确认缓存是否继续增大；
+> * 3. 如果继续增大，说明导致缓存升高的进程还在运行，此时通过 buffer/cacahe 分析工具 cachestat/cachetop/slabtop 等分析缓存被哪里占用；
+> * 4. 如果未发现内存被 buffer/cache 占用，此时通过 top/ps/pidstat 工具定位内存最多的进程；
+> * 5. 找到进程之后，可通过 pmap 分析进程地址空间中内存使用情况然后针对性优化即可；
+> * 6. 通过 vmstat 或者 sar 发现内存不断增长，可以分析是否存在内存泄漏的问题。此时通过内存分析工具 memleak 检查内存是否泄漏；
+> * 7. 如果存在内存泄漏，memleak 会输出内存泄漏的进程以及调用堆栈；
 
