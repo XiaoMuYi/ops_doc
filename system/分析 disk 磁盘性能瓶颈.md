@@ -30,7 +30,7 @@ $ df -h /dev/sda1   # 查看磁盘空间使用情况
 $ df -i /dev/sda1   # 查看磁盘 inode 情况
 ```
 
-**缓存**
+**缓存**  
 此时可以通过 free 或 vmstat 来观察页缓存的大小。但 free 属于的 Cache 是页缓存和可回收 slab 缓存的总和； 
 ```
 $ cat /proc/meminfo | grep -E "SReclaimable|Cached" 
