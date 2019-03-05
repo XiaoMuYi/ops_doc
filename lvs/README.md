@@ -19,13 +19,13 @@
 ## lvs 工作模式
 **NAT，即（Virtual Server via Network Address Translation）网络地址转换**  
 ![lvs-nat工作流程图](../images/lvs/lvs-nat.jpg)  
-a). 当用户请求到达 Director Server 时，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
+ * a). 当用户请求到达 Director Server 时，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
 PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
-b). IPVS比对数据包请求的服务是否为集群服务，若是，修改数据包的目标IP地址为后端服务器IP，然后将数据包发至POSTROUTING链（此时报文的源IP为CIP，目标IP为RIP）；  
-c). POSTROUTING 链通过选路，将数据包发送给Real Server。Real Server比对发现目标为自己的IP，开始构建响应报文发回给Director Server（此时报文的源IP为RIP，目标IP为CIP）；  
-d). Director Server在响应客户端前，此时会将源IP地址修改为自己的VIP地址，然后响应给客户端（此时报文的源IP为VIP，目标IP为CIP）；  
+ * b). IPVS比对数据包请求的服务是否为集群服务，若是，修改数据包的目标IP地址为后端服务器IP，然后将数据包发至POSTROUTING链（此时报文的源IP为CIP，目标IP为RIP）；  
+ * c). POSTROUTING 链通过选路，将数据包发送给Real Server。Real Server比对发现目标为自己的IP，开始构建响应报文发回给Director Server（此时报文的源IP为RIP，目标IP为CIP）；  
+ * d). Director Server在响应客户端前，此时会将源IP地址修改为自己的VIP地址，然后响应给客户端（此时报文的源IP为VIP，目标IP为CIP）；  
 
-特性：  
+特性： 
 1. RS的应该使用私有地址；  
 2. RS的网关必须指向DIP；  
 3. RIP和DIP必须在同一网段内；
@@ -35,11 +35,11 @@ d). Director Server在响应客户端前，此时会将源IP地址修改为自�
 
 **DR，即（Virtual Server via Direct Routing）直接路由模式**  
 ![lvs-nat工作流程图](../images/lvs/lvs-dr.png)  
-a). 当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
-b). PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
-c). IPVS比对数据包请求的服务是否为集群服务，若是，将请求报文中的源MAC地址修改为DIP的MAC地址，将目标MAC地址修改RIP的MAC地址，然后将数据包发至POSTROUTING链。 此时的源IP和目的IP均未修改，仅修改了源MAC地址为DIP的MAC地址，目标MAC地址为RIP的MAC地址；  
-d). 由于DS和RS在同一个网络中，所以是通过二层来传输。POSTROUTING链检查目标MAC地址为RIP的MAC地址，那么此时数据包将会发至Real Server；  
-e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文。处理完成之后，将响应报文通过lo接口传送给eth0网卡然后向外发出（此时的源IP地址为VIP，目标IP为CIP）。响应报文最终送达至客户端；  
+ * a). 当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
+ * b). PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
+ * c). IPVS比对数据包请求的服务是否为集群服务，若是，将请求报文中的源MAC地址修改为DIP的MAC地址，将目标MAC地址修改RIP的MAC地址，然后将数据包发至POSTROUTING链。 此时的源IP和目的IP均未修改，仅修改了源MAC地址为DIP的MAC地址，目标MAC地址为RIP的MAC地址；  
+ * d). 由于DS和RS在同一个网络中，所以是通过二层来传输。POSTROUTING链检查目标MAC地址为RIP的MAC地址，那么此时数据包将会发至Real Server；  
+ * e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文。处理完成之后，将响应报文通过lo接口传送给eth0网卡然后向外发出（此时的源IP地址为VIP，目标IP为CIP）。响应报文最终送达至客户端；  
 
 特性： 
 1. RS可以使用私有地址，还可以使用公网地址，此时可以直接通过互联网连入RS，以实现配置、监控等；  
@@ -65,7 +65,7 @@ e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文�
 动态调度算法：根据算法及RS当前的复制状态 `wlc,lblc,lblcr,SED,NQ`(后两种官方无)；  
 
 | 算法    | 说明     |
-| ----   | :-----    |
+| :----   | :-----    |
 |rr 	|轮叫（Round Robin），它将请求依次均等的分配给不同的RS。适合于RS性能相差不大的情况。
 |wrr |加权轮叫（Weighted Round Robin）|它将依据不同RS的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值低的RS更多。相同权值得RS得到相同数目的连接数。
 |dh 	|目标地址散列调度（Destination Hashing），以目的地址为关键字查找一个静态hash表示获得需要的RS。
