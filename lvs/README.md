@@ -1,8 +1,6 @@
 # LVS 负载均衡原理及安装配置
 
----
-
-lvs 是 `Linux Virtual Server` 的简称，也就是 linux虚拟服务器, 是一个由章文嵩博士发起的自由软件项目，它的官方站点是 `www.linuxvirtualserver.org` 。现在 lvs 已经是 linux 标准内核的一部分，在 linux2.4 内核以前，使用 lvs 时必须要重新编译内核以支持LVS功能模块，但是从 linux2.4 内核以后，已经完全内置了 lvs 的各个功能模块，无需给内核打任何补丁，可以直接使用 lvs 提供的各种功能。
+`lvs` 是 `linux virtual server` 的简称，也就是 linux 虚拟服务器, 是一个由章文嵩博士发起的自由软件项目，它的官方站点是 `www.linuxvirtualserver.org` 。现在 lvs 已经是 linux 标准内核的一部分，在 linux2.4 内核以前，使用 lvs 时必须要重新编译内核以支持LVS功能模块，但是从 linux2.4 内核以后，已经完全内置了 lvs 的各个功能模块，无需给内核打任何补丁，可以直接使用 lvs 提供的各种功能。
 
 ## lvs 组成及相关术语
 **lvs 组成** 
@@ -20,7 +18,7 @@ lvs 是 `Linux Virtual Server` 的简称，也就是 linux虚拟服务器, 是�
 
 ## lvs 工作模式
 **NAT**  
-![lvs-nat工作流程图](../images/lvs/lvs-nat.jpg)
+![lvs-nat工作流程图](../images/lvs/lvs-nat.jpg)  
 a). 当用户请求到达 Director Server 时，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
 PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
 b). IPVS比对数据包请求的服务是否为集群服务，若是，修改数据包的目标IP地址为后端服务器IP，然后将数据包发至POSTROUTING链（此时报文的源IP为CIP，目标IP为RIP）；  
@@ -36,7 +34,7 @@ d). Director Server在响应客户端前，此时会将源IP地址修改为自�
 6. RS可以使用任意支持集群服务的OS；
 
 **DR**  
-![lvs-nat工作流程图](../images/lvs/lvs-dr.jpg)
+![lvs-nat工作流程图](../images/lvs/lvs-dr.png)  
 a). 当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
 b). PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
 c). IPVS比对数据包请求的服务是否为集群服务，若是，将请求报文中的源MAC地址修改为DIP的MAC地址，将目标MAC地址修改RIP的MAC地址，然后将数据包发至POSTROUTING链。 此时的源IP和目的IP均未修改，仅修改了源MAC地址为DIP的MAC地址，目标MAC地址为RIP的MAC地址；  
@@ -52,7 +50,7 @@ e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文�
 6. RS可以使用大多数的操作系统;
 
 **TUN**
-![lvs-nat工作流程图](../images/lvs/lvs-tun.jpg)
+![lvs-nat工作流程图](../images/lvs/lvs-tun.png)  
 即（Virtual Server via IP Tunneling） IP隧道。它的连接调度和管理与VS/NAT方式一样，只是它的报文转发方法不同，VS/TUN方式中，调度器采用IP隧道技术将用户请求转发到某个Real Server，而这个Real Server将直接响应用户的请求，不再经过前端调度器，此外，对Real Server的地域位置没有要求，可以和Director Server位于同一个网段，也可以是独立的一个网络。因此，在TUN方式中，调度器将只处理用户的报文请求，集群系统的吞吐量可以提高到10倍。
 
 特性： 
@@ -63,8 +61,8 @@ e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文�
 5. RS的OS必须得支持隧道功能；
 
 ## lvs 负载调度算法
-静态调度方法：仅根据算法本身进行调度 `rr,wrr,dh,sh`；
-动态调度算法：根据算法及RS当前的复制状态 `wlc,lblc,lblcr,SED,NQ`(后两种官方无)；
+静态调度方法：仅根据算法本身进行调度 `rr,wrr,dh,sh`；  
+动态调度算法：根据算法及RS当前的复制状态 `wlc,lblc,lblcr,SED,NQ`(后两种官方无)；  
 
 | 算法   | 说明     |
 | ----   | :-----    |
