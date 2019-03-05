@@ -17,7 +17,7 @@
  > * CIP：Client IP，访问客户端的IP地址。
 
 ## lvs 工作模式
-**NAT**  
+**NAT，即（Virtual Server via Network Address Translation）网络地址转换**  
 ![lvs-nat工作流程图](../images/lvs/lvs-nat.jpg)  
 a). 当用户请求到达 Director Server 时，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
 PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
@@ -33,7 +33,7 @@ d). Director Server在响应客户端前，此时会将源IP地址修改为自�
 5. 支持端口映射；  
 6. RS可以使用任意支持集群服务的OS；
 
-**DR**  
+**DR，即（Virtual Server via Direct Routing）直接路由模式**  
 ![lvs-nat工作流程图](../images/lvs/lvs-dr.png)  
 a). 当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链（此时报文的源IP为CIP，目标IP为VIP）；  
 b). PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链；  
@@ -49,9 +49,9 @@ e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文�
 5. 不支持端口映射；  
 6. RS可以使用大多数的操作系统;
 
-**TUN**
+**TUN，即（Virtual Server via IP Tunneling） IP隧道**
 ![lvs-nat工作流程图](../images/lvs/lvs-tun.png)  
-即（Virtual Server via IP Tunneling） IP隧道。它的连接调度和管理与VS/NAT方式一样，只是它的报文转发方法不同，VS/TUN方式中，调度器采用IP隧道技术将用户请求转发到某个Real Server，而这个Real Server将直接响应用户的请求，不再经过前端调度器，此外，对Real Server的地域位置没有要求，可以和Director Server位于同一个网段，也可以是独立的一个网络。因此，在TUN方式中，调度器将只处理用户的报文请求，集群系统的吞吐量可以提高到10倍。
+它的连接调度和管理与VS/NAT方式一样，只是它的报文转发方法不同，VS/TUN方式中，调度器采用IP隧道技术将用户请求转发到某个Real Server，而这个Real Server将直接响应用户的请求，不再经过前端调度器，此外，对Real Server的地域位置没有要求，可以和Director Server位于同一个网段，也可以是独立的一个网络。因此，在TUN方式中，调度器将只处理用户的报文请求，集群系统的吞吐量可以提高到10倍。
 
 特性： 
 1. RIP，DIP，VIP都得是公网地址；  
@@ -64,15 +64,15 @@ e). RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文�
 静态调度方法：仅根据算法本身进行调度 `rr,wrr,dh,sh`；  
 动态调度算法：根据算法及RS当前的复制状态 `wlc,lblc,lblcr,SED,NQ`(后两种官方无)；  
 
-| 算法   | 说明     |
+| 算法    | 说明     |
 | ----   | :-----    |
-|rr	|轮叫（Round Robin），它将请求依次均等的分配给不同的RS。适合于RS性能相差不大的情况。
-|wrr|加权轮叫（Weighted Round Robin）|它将依据不同RS的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值低的RS更多。相同权值得RS得到相同数目的连接数。
-|dh	|目标地址散列调度（Destination Hashing），以目的地址为关键字查找一个静态hash表示获得需要的RS。
-|sh	|源地址散列调度（Source Destinantion Hashing） 以源地址为关键字查找一个静态hash表示获得需要的RS。(实现会话绑定功能)
-|wlc|加权最小连接数调度（Weighted Least-Connection）， 假设各台RS的权值依次为Wi(i=1...n),当前的TCP连接数依次为Ti(i=1...),依次选取Ti/Wi为最小的RS作为下一个分配的RS。计算当前的负载Overhead=（Active*256+Inactive）/weight
-|lc	|最小连接数调度（Least-Connection）， IPVS表示存储了所有的活动的链接。把新的链接请求发送到当前连接数最小的RS。计算当前的负载Overhead=Active*256+Inactive来实现,结果最小的胜出；
-|lblc|	基于局部性的最少链接（Locality-Based Least-Connection）， 将来自同一目的地址的请求分配给同一台RS，如果这台服务器尚未满负载，否则分配给连接数最小的RS，并以它为下一次分配的首选考虑。
-|lblcr|	带复制的基于局部性最少链接（Locality-Based Least-Connection with Replication）， 对于某一目的地址，对应有一个RS子集。对此地址请求，为它分配子集中连接数最小RS。如果子集中所有服务器均已满负荷，则从集群中选择一个连接书较小服务器，将它加入到此子集并分配连接；若一定时间内，未被做任何修改，则将子集中负载最大的节点从子集删除。相当于dh+lc。
-|SED| 最短的期望延迟（Shortest Expected Delay Scheduling SEd）计算当前的负载Overhead=（Active+1）*256/weight
-|NQ	|最少队列调度（Never Queue Scheduling）
+|rr 	|轮叫（Round Robin），它将请求依次均等的分配给不同的RS。适合于RS性能相差不大的情况。
+|wrr |加权轮叫（Weighted Round Robin）|它将依据不同RS的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值低的RS更多。相同权值得RS得到相同数目的连接数。
+|dh 	|目标地址散列调度（Destination Hashing），以目的地址为关键字查找一个静态hash表示获得需要的RS。
+|sh 	|源地址散列调度（Source Destinantion Hashing） 以源地址为关键字查找一个静态hash表示获得需要的RS。(实现会话绑定功能)
+|wlc |加权最小连接数调度（Weighted Least-Connection）， 假设各台RS的权值依次为Wi(i=1...n),当前的TCP连接数依次为Ti(i=1...),依次选取Ti/Wi为最小的RS作为下一个分配的RS。计算当前的负载Overhead=（Active*256+Inactive）/weight
+|lc	 |最小连接数调度（Least-Connection）， IPVS表示存储了所有的活动的链接。把新的链接请求发送到当前连接数最小的RS。计算当前的负载Overhead=Active*256+Inactive来实现,结果最小的胜出；
+|lblc |	基于局部性的最少链接（Locality-Based Least-Connection）， 将来自同一目的地址的请求分配给同一台RS，如果这台服务器尚未满负载，否则分配给连接数最小的RS，并以它为下一次分配的首选考虑。
+|lblcr |	带复制的基于局部性最少链接（Locality-Based Least-Connection with Replication）， 对于某一目的地址，对应有一个RS子集。对此地址请求，为它分配子集中连接数最小RS。如果子集中所有服务器均已满负荷，则从集群中选择一个连接书较小服务器，将它加入到此子集并分配连接；若一定时间内，未被做任何修改，则将子集中负载最大的节点从子集删除。相当于dh+lc。
+|SED | 最短的期望延迟（Shortest Expected Delay Scheduling SEd）计算当前的负载Overhead=（Active+1）*256/weight
+|NQ 	|最少队列调度（Never Queue Scheduling）
