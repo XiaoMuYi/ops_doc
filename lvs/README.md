@@ -23,7 +23,7 @@ lvs 是 `Linux Virtual Server` 的简称，也就是 linux虚拟服务器, 是�
 NAT 及网络地址转换，当用户请求到达调度器时，调度器将请求报文的目标地址（即虚拟IP地址）改写成选定的Real Server地址，同时报文的目标端口也改成选定的Real Server的相应端口，最后将报文请求发送到选定的Real Server。在服务器端得到数据后，Real Server返回数据给用户时，需要再次经过负载调度器将报文的源地址和源端口改成虚拟IP地址和相应端口，然后把数据发送给用户，完成整个负载调度过程。
 可以看出，在NAT方式下，用户请求和响应报文都必须经过Director Server地址重写，当用户请求越来越多时，调度器的处理能力将成为瓶颈。
 
-![lvs-nat工作流程图](https://github.com/XiaoMuYi/ops_doc/tree/master/images/lvs/lvs-nat.jpg)
+![lvs-nat工作流程图](../images/lvs/lvs-nat.jpg)
 
 特性：  
 1. RS的应该使用私有地址；  
