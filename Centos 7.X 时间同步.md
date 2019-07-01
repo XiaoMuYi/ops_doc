@@ -1,27 +1,28 @@
-## 关于 centos 7.x 时间同步
+# 关于 centos 7.x 时间同步
 在CentOS 6版本，时间设置有date、hwclock命令，从CentOS 7开始，完全可以使用了一个新的命令timedatectl来替换。
 
-### 一、基本概念
-#### 1.1 GMT、UTC、CST、DST 时间
-#### (1) UTC
+## 1. 基本概念
+
+### 1.1 GMT、UTC、CST、DST 时间
+-  UTC
 整个地球分为二十四时区，每个时区都有自己的本地时间。在国际无线电通信场合，为了统一起见，使用一个统一的时间，称为通用协调时(UTC, Universal Time Coordinated)。
-#### (2) GMT
+- GMT
 格林威治标准时间 (Greenwich Mean Time)指位于英国伦敦郊区的皇家格林尼治天文台的标准时间，因为本初子午线被定义在通过那里的经线。(UTC与GMT时间基本相同，本文中不做区分)
-#### (3) CST
+- CST
 中国标准时间 (China Standard Time)
 Default
 GMT + 8 = UTC + 8 = CST
-#### (4) DST
+- DST
 夏令时(Daylight Saving Time) 指在夏天太阳升起的比较早时，将时钟拨快一小时，以提早日光的使用。（中国不使用）
 
-#### 1.2 硬件时钟和系统时钟
-#### (1) 硬件时钟  
+### 1.2 硬件时钟和系统时钟
+- 硬件时钟  
 RTC(Real-Time Clock)或CMOS时钟，一般在主板上靠电池供电，服务器断电后也会继续运行。仅保存日期时间数值，无法保存时区和夏令时设置。
-#### (2) 系统时钟  
+- 系统时钟  
 一般在服务器启动时复制RTC时间，之后独立运行，保存了时间、时区和夏令时设置。
 
-### 二、时间同步方式
-#### 2.1 使用 NTP 进行时间同步
+## 2 时间同步方式
+### 2.1 使用 NTP 进行时间同步
 NTP在linux下有两种时钟同步方式，分别为直接同步和平滑同步：
 + 直接同步  
 使用ntpdate命令进行同步，直接进行时间变更。如果服务器上存在一个12点运行的任务，当前服务器时间是13点，但标准时间时11点，使用此命令可能会造成任务重复执行。因此使用ntpdate同步可能会引发风险，因此该命令也多用于配置时钟同步服务时第一次同步时间时使用。
@@ -30,19 +31,19 @@ NTP在linux下有两种时钟同步方式，分别为直接同步和平滑同步
 使用ntpd进行时钟同步，可以保证一个时间不经历两次，它每次同步时间的偏移量不会太陡，是慢慢来的，这正因为这样，ntpd平滑同步可能耗费的时间比较长。
 
 #### 2.1.1 查看是否安装
-```
+```shell
 $ rpm -qa|grep ntp
 ntpdate-4.2.6p5-25.el7.centos.2.x86_64
 ntp-4.2.6p5-25.el7.centos.2.x86_64
 ```
 
 #### 2.1.2 如未安装请执行如下命令
-```
+```shell
 $ yum -y install ntp ntpdate
 ```
 
 #### 2.1.3 修改 NTP 配置
-```
+```shell
 $ /etc/ntp.conf 
 # For more information about this file, see the man pages
 # ntp.conf(5), ntp_acc(5), ntp_auth(5), ntp_clock(5), ntp_misc(5), ntp_mon(5).
@@ -113,11 +114,11 @@ keys /etc/ntp/keys
 #statistics clockstats cryptostats loopstats peerstats
 ```
 #### 2.1.4 启动相关服务
-```
+```shell
 $ systemctl start ntpd
 $ systemctl enable ntpd
 ```
-#### 2.2 Chrony
+### 2.2 Chrony
 Chrony是一个开源的自由软件，像CentOS 7或基于RHEL 7操作系统，已经是默认服务，默认配置文件在 /etc/chrony.conf 它能保持系统时间与时间服务器（NTP）同步，让时间始终保持同步。相对于NTP时间同步软件，占据很大优势。其用法也很简单。
 
 Chrony有两个核心组件，分别是：
@@ -126,11 +127,11 @@ Chrony有两个核心组件，分别是：
 
 #### 2.2.1 安装Chrony
 系统默认已经安装，如未安装，请执行以下命令安装：
-```
+```shell
 $ yum install chrony -y
 ```
 #### 2.2.2 配置Chrony
-```
+```shell
 $ cat /etc/chrony.conf
 # 使用pool.ntp.org项目中的公共服务器。以server开，理论上你想添加多少时间服务器都可以。
 # Please consider joining the pool (http://www.pool.ntp.org/join.html).
@@ -179,23 +180,28 @@ logdir /var/log/chrony
 ```
 
 #### 2.2.3 启动服务
-```
+```shell
 $ systemctl start chronyd
 $ systemctl enable chronyd
 ```
+
 设置完时区后，强制同步下系统时钟：
-```
+
+```shell
 $ chronyc -a makestep
 200 OK
 ```
+
 查看时间同步源状态：
-```
+
+```shell
 $ chronyc sourcestats -v
 ```
 
-### 其他
-关于 timedatecatl 命令使用
-```
+#### 2.2.4 其他
+关于`timedatecatl`命令使用
+
+```shell
 timedatectl 或 timedatectl status           # 读取时间
 timedatectl set-time "YYYY-MM-DD HH:MM:SS"  # 设置时间
 timedatectl list-timezones                  # 列出时区
@@ -203,5 +209,5 @@ timedatectl set-timezone Asia/Shanghai      # 设置时区
 timedatectl set-ntp yes                     # 同步NTP服务器，可以no
 timedatectl set-local-rtc 1                 # 将硬件时钟调整为与本地时钟一致
 ```
-硬件时钟默认使用UTC时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改,修改后系统会出现警告。  
-安装完服务器之后，首先到官方 NTP 公共时间服务器池NTP Public Pool Time Servers（www.pool.ntp.org） ，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现 NTP 服务器列表。
+硬件时钟默认使用`UTC`时间，因为硬件时钟不能保存时区和夏令时调整，修改后就无法从硬件时钟中读取出准确标准时间，因此不建议修改,修改后系统会出现警告。  
+安装完服务器之后，首先到官方`NTP`公共时间服务器池`NTP Public Pool Time Servers（www.pool.ntp.org）`，选择你服务器物理位置所在的洲，然后搜索你的国家位置，然后会出现`NTP`服务器列表。
