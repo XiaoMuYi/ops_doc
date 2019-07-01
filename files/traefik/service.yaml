@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus-operator-traefik-ingress
+    jobLabel: traefik-ingress
+    release: prometheus-operator
+  name: prometheus-operator-traefik-ingress
+  namespace: kube-system
+spec:
+  clusterIP: None
+  ports:
+  - name: admin
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  sessionAffinity: None
+  type: ClusterIP

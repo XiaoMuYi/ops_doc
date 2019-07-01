@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: prometheus-operator-cephfs
+    chart: prometheus-operator-1.7.0
+    heritage: Tiller
+    release: prometheus-operator
+  name: prometheus-operator-cephfs
+  namespace: prometheus-operator
+spec:
+  endpoints:
+  - interval: 15s
+    port: http-metrics
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  selector:
+    matchLabels:
+      app: prometheus-operator-cephfs

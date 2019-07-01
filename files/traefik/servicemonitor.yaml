@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: prometheus-operator-traefik-ingress
+    release: prometheus-operator
+  name: prometheus-operator-traefik-ingress
+  namespace: prometheus-operator
+spec:
+  endpoints:
+  - interval: 15s
+    port: admin
+  jobLabel: traefik-ingress
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  selector:
+    matchLabels:
+      app: prometheus-operator-traefik-ingress
+      release: prometheus-operator

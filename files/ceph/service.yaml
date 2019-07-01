@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus-operator-cephfs
+    chart: prometheus-operator-1.7.0
+    heritage: Tiller
+    jobLabel: kube-scheduler
+    release: prometheus-operator
+  name: prometheus-operator-cephfs
+  namespace: kube-system
+spec:
+  clusterIP: None
+  ports:
+  - name: http-metrics
+    port: 9283
+    protocol: TCP
+    targetPort: 9283
+  type: ClusterIP

@@ -1,0 +1,93 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: test-tbex-cfd-otc-scheduler
+  namespace: test
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  template:
+    metadata:
+      labels:
+        name: test-tbex-cfd-otc-scheduler
+    spec:
+      containers:
+      - name: tbex-cfd-otc-scheduler
+        image: 192.168.200.150/java/test-tbex-cfd-otc-scheduler:201904291913
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: 800Mi
+          limits:
+            memory: 820Mi
+        # 关于eureka平滑上下线
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - "CONNECTED=$(ifconfig eth0 | grep 'inet' | awk '{print $2}') && curl -u admin:123123 -i -X PUT http://dev-tbex-cfd-eureka-node1/eureka/apps/CFD-TALLY-ADMIN/${CONNECTED}:CFD-TALLY-ADMIN:8021/status?value=OUT_OF_SERVICE && while true;do CONNECTED1=$(netstat -antp|grep 80|grep -cvi listen);echo $CONNECTED1; [ $CONNECTED1 -lt 1 ] && break;sleep 1;done"
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/sh"
+            - "-c"
+            - "exitfunc() { CONNECTED=$(ifconfig eth0 | grep 'inet' | awk '{ print $2}') && aaa=$(curl -u admin:123123 -s -w %{http_code} -o /dev/null http://dev-tbex-cfd-eureka-node1/eureka/instances/${CONNECTED}:CFD-TALLY-ADMIN:8021) ;if [ $aaa -eq 200 ] ;then sleep 6 ; echo 1 ; return 0 ;else return 1 ; fi } ; exitfunc"
+          failureThreshold: 20
+          initialDelaySeconds: 45
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+      env:
+        - name: aliyun_logs_test-tbex-cfd-otc-scheduler
+          value: "stdout"
+      volumeMounts:
+          - name: hosts
+            mountPath: "/etc/hosts"
+          - name: log
+            mountPath: "/data/log/tbex-cfd-otc-scheduler"
+    volumes:
+    - name: hosts
+      hostPath:
+        path: /etc/hosts
+    - name: log
+      hostPath:
+        path: /data/log/tbex-cfd-otc-scheduler
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-tbex-cfd-otc-scheduler
+  namespace: test
+  labels:
+    name: test-tbex-cfd-otc-scheduler
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 9902
+  selector:
+    name: test-tbex-cfd-otc-scheduler
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-tbex-cfd-otc-scheduler
+  namespace: test
+  #业务需要添加自定义header头
+  annotations:
+    ingress.kubernetes.io/custom-request-headers: tenantId:100000
+    ingress.kubernetes.io/proxy-headers: tenantId
+spec:
+  rules:
+  - host: test-tbex-cfd-otc-scheduler.cfdtest.58coin.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: test-tbex-cfd-otc-scheduler
+          servicePort: web
