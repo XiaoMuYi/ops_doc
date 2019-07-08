@@ -1,0 +1,103 @@
+pipeline {
+    // 注入环境变量
+    environment {
+        IOS_PIPELINE_VERSION="1.0.0"
+    }
+
+    // 构建参数
+    parameters {
+        string(name: 'sshUrl', defaultValue: '', description: '代码仓库地址')
+        string(name: 'branch', defaultValue: 'master', description: 'branch or tag')
+
+        // iOS
+        string(name: 'configuration', defaultValue: 'Debug', description: '--configuration 参数')
+        string(name: 'scheme', defaultValue: '', description: 'scheme名称')
+        string(name: 'exportMethod', defaultValue: 'ad-hoc', description: '指定打包所使用的输出方式，目前支持app-store, package, ad-hoc, enterprise, development, 和developer-id，即xcodebuild的method参数')
+        string(name: 'projectInfoPlistPath', defaultValue: '', description: 'info.plist路径')
+        string(name: 'outputPath', defaultValue: 'output', description: 'ipa输出路径')
+        string(name: 'exportOptions', defaultValue: 'ExportOptions.plist', description: 'ExportOptions.plist')
+
+        // OSS
+        string(name: 'artifactPath', defaultValue: 'output/', description: '制品路径')
+        string(name: 'artifactFilter', defaultValue: '*', description: '制品文件名过滤')
+        string(name: 'ossutilPath', defaultValue: '/Users/baiyi/Documents/ci-tools/ossutil', description: 'ossutil路径')
+
+    }
+
+    agent {
+        label 'iOS'
+    }
+    stages {
+        stage('检出项目') {
+            steps {
+                //cleanWs()
+                checkout([$class: 'GitSCM', branches: [[name: env.branch]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout']], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'admin', url: env.sshUrl]]])
+            }
+        }
+        stage('构建项目') {
+            steps {
+                withCredentials( [ usernameColonPassword(credentialsId: 'user-node-03.ops.yangege.cn', variable: 'USERPASS') ] ) {
+                    withEnv( [ "OC_SCHEME=${params.scheme}","OC_PLIST_INFO_PATH=${params.projectInfoPlistPath}", "OC_OUTPUT_PATH=${params.outputPath}","OC_EXPORT_OPTIONS=${params.exportOptions}" ] ) {
+                        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+                            sh '''
+                                #!/bin/bash
+                                # https://docs.fastlane.tools/getting-started/ios/setup/#set-up-environment-variables
+                                export LC_ALL=en_US.UTF-8
+                                export LANG=en_US.UTF-8
+                                export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+                                # 使用密钥
+                                /usr/bin/security unlock-keychain -p $USERPASS /Users/baiyi/Library/Keychains/login.keychain
+                                /usr/local/bin/pod install
+                                # 取版本号
+                                bundleShortVersion=`/usr/libexec/PlistBuddy -c "print CFBundleShortVersionString" "${OC_PLIST_INFO_PATH}"`
+                                nowDate=`date +"%Y%m%d%H%M"`
+                                /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${nowDate}" "${OC_PLIST_INFO_PATH}"
+                                bundleName=`/usr/libexec/PlistBuddy -c "print CFBundleName" "${OC_PLIST_INFO_PATH}"`
+                                /usr/libexec/PlistBuddy -c "Set :CFBundleName ${bundleName}" "${OC_PLIST_INFO_PATH}"
+                                # 取build值
+                                bundleVersion=`/usr/libexec/PlistBuddy -c "print CFBundleVersion" "${OC_PLIST_INFO_PATH}"`
+
+                                # 版本名称 2.4.5_build_201907011645
+                                versionName="${bundleShortVersion}_build_${bundleVersion}"
+                                # 指定输出ipa固定路径
+                                outputPath="output"
+                                exportOptions="ExportOptions.plist"
+
+                                ipaName="${OC_SCHEME}_${versionName}.ipa"
+
+                                #------------IPA BUILD--------#
+                                /usr/local/bin/fastlane gym --scheme ${scheme} --clean\
+                                --configuration ${configuration} \
+                                --archive_path "${OC_OUTPUT_PATH}_xcarchive/${OC_SCHEME}_${versionName}.xcarchive" \
+                                --export_method ${exportMethod} \
+                                --export_options ${OC_EXPORT_OPTIONS} \
+                                --output_directory ${OC_OUTPUT_PATH} \
+                                --output_name ${ipaName}
+
+                                # 处理 manifest.plist
+                                cp /Users/baiyi/Documents/ci-tools/tplManifest/manifest.plist ./output
+                                # bundle-version
+                                /usr/libexec/PlistBuddy -c "Set :items:0:metadata:bundle-version ${bundleShortVersion}" ./output/manifest.plist
+                                # title
+                                /usr/libexec/PlistBuddy -c "Set :items:0:metadata:title ${bundleName}" ./output/manifest.plist
+                                # 写入下载路径
+                                ipaUrl="https://pkg.ops.yangege.cn/ios/${JOB_NAME}/${BUILD_NUMBER}/${ipaName}"
+                                /usr/libexec/PlistBuddy -c "Set :items:0:assets:0:url ${ipaUrl}" ./output/manifest.plist
+                            '''
+                        }
+                    }
+                }      
+            }
+        }
+        stage('上传OSS') {
+            steps {
+                sh "${params.ossutilPath}/ossutilmac64 cp -r ${WORKSPACE}/${params.artifactPath} oss://opscloud/ios/${JOB_NAME}/${BUILD_NUMBER}/ --config-file ${params.ossutilPath}/config"
+            }
+        }
+        stage('归档制品') {
+            steps {
+                archive "${params.artifactPath}${params.artifactFilter}"
+            }
+        }
+    }
+}

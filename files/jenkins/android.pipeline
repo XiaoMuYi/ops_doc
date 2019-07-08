@@ -1,0 +1,69 @@
+pipeline {
+    // 构建参数
+    parameters {
+        // OSS       
+        string(name: 'ossPath', defaultValue: '', description: '制品的OSS相对路径')
+        string(name: 'ossutilPath', defaultValue: '/data/www/install/ossutil', description: 'ossutil路径')
+        string(name: 'signArtifactFilter', defaultValue: '*_sign.apk', description: '加固签名制品文件名过滤')
+        string(name: 'artifactFilter', defaultValue: '*.apk', description: '制品文件名过滤')
+        // 加固
+        string(name: 'keystore', defaultValue: '/data/www/install/android_keystore/GlobalScanner.keystore', description: 'AndroidKeystore')
+        string(name: 'keyAlias', defaultValue: '', description: '签名文件的keyAlias')
+        string(name: 'jiagu', defaultValue: '/data/www/install/360jiagubao/jiagu/jiagu.jar', description: '加固Jar包')
+        string(name: 'mulpkgFilepath', defaultValue: '/data/www/install/360jiagubao/jiagu/channels.txt', description: '多渠道配置信息路径')
+      
+    }
+    agent {
+        node {
+            label 'java'
+        }
+    }
+    stages {
+        stage('下载制品') {
+            steps {
+               sh "rm -rf ${WORKSPACE}/*"
+               sh "${params.ossutilPath}/ossutil cp -r --update -c /data/www/install/ossutil/config oss://opscloud/${params.ossPath} ${WORKSPACE}"
+               // 移动到工作目录根路径
+               sh "mv `find ${WORKSPACE} -name ${params.artifactFilter}` ${WORKSPACE}"
+            }
+        }
+        stage('加固生成渠道包') {
+            steps {
+               withCredentials([usernamePassword(credentialsId: 'user_360jiagu', passwordVariable: 'USERPASS', usernameVariable: 'USERNAME')]) {
+                 sh "java -jar ${params.jiagu} -login $USERNAME $USERPASS"
+               }
+               sh "rm -rf ${WORKSPACE}/mulpkg ; mkdir -p ${WORKSPACE}/mulpkg"
+               sh "java -jar ${params.jiagu} -jiagu `ls ${params.artifactFilter}` ${WORKSPACE}/mulpkg -automulpkg -importmulpkg ${params.mulpkgFilepath}"
+            }
+        }    
+        stage('渠道包签名') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'ks_globalscanner', passwordVariable: 'KEYPASS', usernameVariable: 'USERNAME')]) {
+                  withEnv(["OC_KEYSTORE_FILE=${params.keystore}","OC_KEYALIAS=${params.keyAlias}"]) {
+                    sh '''#!/bin/bash
+                         mkdir -p ./sign
+                         for apkName in `ls mulpkg` ; do 
+                           apkSignName=`basename $apkName .apk`_sign.apk
+                           jarsigner -verbose -keystore ${OC_KEYSTORE_FILE} -storepass $KEYPASS -keypass $KEYPASS -signedjar ./sign/${apkSignName} ./mulpkg/${apkName} ${OC_KEYALIAS}
+                         done'''
+                  }
+                }
+            }
+        }
+        stage('上传OSS') {
+            steps {
+            // 压缩多渠道包
+            sh "zip -rq ${WORKSPACE}/android_mulpkg_sign.zip ./sign/*_sign.apk"
+            sh "${params.ossutilPath}/ossutil cp -r ${WORKSPACE}/*.zip oss://opscloud/android/${JOB_NAME}/${BUILD_NUMBER}/ --config-file ${params.ossutilPath}/config"
+            }
+        }
+        stage('归档制品') {
+            steps {
+            archive "*.zip"
+            }
+        }         
+    }
+}
+
+
+

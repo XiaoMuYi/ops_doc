@@ -1,0 +1,150 @@
+pipeline {
+  agent {node {label '192.168.0.208'}}
+
+  environment {
+  	def JAVA_HOME="/usr/local/jdk"
+    def M2_HOME="/usr/local/maven"
+    PATH="/opt/kube/bin:/bin:/sbin/:/usr/bin:/usr/sbin/:/usr/local/bin:$PATH"
+  }
+
+  options {
+    disableConcurrentBuilds()
+    timeout(time: 1, unit: 'HOURS')
+    //保持构建的最大个数
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+  }
+  
+  parameters {
+  
+    choice(name: 'deploy_env', choices: 'dev1\nprod\nk8s-dev1', description: '选择需要部署的环境')
+
+    choice(name: 'host', choices: 'user-server', description: '选择需要部署的主机')
+
+    choice(name: 'service_name', choices: 'user')
+
+    choice(name: 'module_name', choices: 'hsjry-user-springboot')
+
+    string(name: 'jar_port', defaultValue: '9002')
+
+    gitParameter(name: 'git_branch', branchFilter: 'origin/(.*)', defaultValue: 'master', type: 'PT_BRANCH', quickFilterEnabled: 'true', description: '选择需要部署的分支', sortMode: 'ASCENDING_SMART')
+
+  }
+
+  post{
+    success{
+        script {
+            wrap([$class: 'BuildUser']) {
+                mail to: "${BUILD_USER_EMAIL}",
+                from: "devops@ilanni.com",
+                subject: "'${JOB_NAME}' (${BUILD_NUMBER}) 发布 成功",
+                body: "本次发布由 ${BUILD_USER} 发起，发布环境 ${params.deploy_env} ，发布 成功 ，发布版本 ${params.service_name}:${params.git_branch} .\n具体发布细节，可以前往${env.BUILD_URL}进行查看。"
+            }
+        }
+    }
+    failure{
+        script { 
+            wrap([$class: 'BuildUser']) {
+                mail to: "${BUILD_USER_EMAIL}",
+                from: "devops@ilanni.com",
+                subject: "'${JOB_NAME}' (${BUILD_NUMBER}) 发布 失败",
+                body: "本次发布由 ${BUILD_USER} 发起，发布环境 ${params.deploy_env} ，发布 成功 ，发布版本 ${params.service_name}:${params.git_branch} .\n具体发布细节，可以前往${env.BUILD_URL}进行查看。"
+            }
+        }
+  
+    }
+    unstable{
+        script { 
+            wrap([$class: 'BuildUser']) {
+                mail to: "${BUILD_USER_EMAIL}",
+                from: "devops@ilanni.com",
+                subject: "'${JOB_NAME}' (${BUILD_NUMBER}) 发布 失败",
+                body: "本次发布由 ${BUILD_USER} 发起，发布环境 ${params.deploy_env} ，发布 成功 ，发布版本 ${params.service_name}:${params.git_branch} .\n具体发布细节，可以前往${env.BUILD_URL}进行查看。"
+            }
+        }
+    }
+  }
+
+  stages {
+    stage('配置构建信息') {
+      steps {
+        script {
+          wrap([$class: 'BuildUser']){
+//           sh 'echo BUILD_USER: "${BUILD_USER}"'
+            currentBuild.description = "本次发布由<strong><span style='color:#E53333;'> ${BUILD_USER} </span></strong>发起，发布环境<strong><span style='color:#E53333;'> ${params.deploy_env}</span></strong>，发布版本 <strong><span style='color:#E53333;'>${params.service_name}:${params.git_branch}</span></strong>"
+          }
+        }
+      }
+    }
+
+
+    stage("获取应用代码") {
+       steps {
+//         echo "branch_name: ${params.git_branch}"
+         sh 'git config --global http.sslVerify false'
+  	     dir ( "${env.WORKSPACE}" ) {
+	       git (
+			 branch: "${git_branch}",
+	         credentialsId: '2d3597ba-98b4-47d1-9369-f8dfa91372b5',
+	         url: 'git@gitlab.ilanni.com:unicorn/core/user.git'
+	       )
+  	     }
+       }
+    }
+
+
+    stage("获取运维代码") {
+          steps {
+            sh 'git config --global http.sslVerify false'
+  	        dir ( "${WORKSPACE}/ansible/" ) {
+	          git (
+	            branch: "master",
+	            credentialsId: '2d3597ba-98b4-47d1-9369-f8dfa91372b5',
+	            url: 'git@gitlab.ilanni.com:devops/ops-ansible.git'
+	          )
+  	        }
+          }
+    }
+
+
+    stage("编译打包") {
+      steps {
+//        echo "module_name: ${params.module_name}"
+        echo "module_name: ${module_name}"
+        sh "mvn clean package -U -Dmaven.test.skip=true -pl ${params.module_name} -am || exit 1"
+      }
+    }
+
+
+    stage("处理jar包") {
+      steps {
+        sh '''
+          set -x
+          yes 2>/dev/null |cp -r $(find ${WORKSPACE}/ -maxdepth 3 -iname "*${service_name}*.jar" |grep target |xargs du -shm |sort -nr |head -n 1 |  awk \'{print $2}\') ${WORKSPACE}/${service_name}.jar
+		   echo ---跳出到打包目录---
+          cd ${WORKSPACE}/
+        '''
+        }
+      }
+
+
+    stage("处理脚本") {
+      steps {
+        sh '''
+          yes 2>/dev/null |cp -a ${WORKSPACE}/ansible/* /etc/ansible/
+          chmod 600 /etc/ansible/key/*
+        '''
+        }
+      }
+
+
+    stage("部署jar包") {
+      steps {
+        sh '''
+          ansible-playbook  -i /etc/ansible/inventory/${deploy_env} /etc/ansible/jar-deplop_port.yml -e "host=${host}" -e "src_dir=${WORKSPACE}/${service_name}.jar" -e "jar_port=${jar_port}" -e "service_name=${service_name}" -e "deploy_env=${deploy_env}" -vvv
+        '''
+        }
+      }
+
+
+  }
+}
