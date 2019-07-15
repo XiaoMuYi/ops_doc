@@ -70,10 +70,9 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
 > * st: cpu在虚拟化环境上在其他租户上的开销;  
 
 vmstat 只给出了系统总体的上下文切换情况，要想查看每个进程的上线文切换次数，需要通过 `pidstat -wt 5 ` 命令（pidstat是进程分析工具）。
-```
+```shell
 # 每隔 5 秒输出 1 组数据
-$ pidstat -w 5
-pidstat -wt 5
+$ pidstat -wt 5
 Linux 4.4.0-1065-aws (ip-172-31-25-95) 	02/16/19 	_x86_64_	(1 CPU)
 
 13:22:22      UID      TGID       TID   cswch/s nvcswch/s  Command
@@ -87,9 +86,9 @@ Linux 4.4.0-1065-aws (ip-172-31-25-95) 	02/16/19 	_x86_64_	(1 CPU)
 > * nvcswch：表示每秒非自愿上下文切换（non voluntary context switches）的次数。指进程由于时间片已到等原因，被系统强制调度而发生的上下文切换。比如大量进程争抢CPU资源。  
 
 **获取中断类型**
-```
- $ watch -d cat /proc/interrupts
-  48:  836243176  xen-percpu-virq      timer0
+```shell
+$ watch -d cat /proc/interrupts
+48:  836243176  xen-percpu-virq      timer0
 LOC:          0   Local timer interrupts
 SPU:          0   Spurious interrupts
 PMI:          0   Performance monitoring interrupts
@@ -98,10 +97,28 @@ RTR:          0   APIC ICR read retries
 RES:          0   Rescheduling interrupts
 CAL:          0   Function call interrupts
 ```
+从左到右分别是：irq的序号， 在各自cpu上发生中断的次数，可编程中断控制器，设备名称（request_irq的dev_name字段）。但是`/proc/interrupts`信息不是特别详细，具体信息可以通过`/proc/stat`查看。如下所示：
+```shell
+$ cat /proc/stat
+#对应CPU值：user nice  system   idle   iowait irrq  softirq  steal guest guest_nice 
+cpu  20732225 51035 8602346 569800774 90186   0    995954    0      0     0
+cpu0 10397327 25686 4267057 284802868 46118   0    527830    0      0     0
+cpu1 10334898 25348 4335288 284997905 44067   0    468123    0      0     0
+#第一个数为自系统启动以来，发生的所有的中断的次数。然后每个数对应一个特定的中断自系统启动以来所发生的次数；
+intr 8692232117 38 10 0 0 0 0 0 0 1 0 0 0 181 0 0 0 1 31614472 62 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 785214068 916648422 0 1476126 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ctxt 15304421323   #自系统启动以来CPU发生的上下文交换的次数；
+btime 1560152757   #系统启动到现在的时间，单位为秒(s)；
+processes 11400282 #自系统启动以来所创建的任务的个数目；
+procs_running 1    #当前运行队列的任务的数目；
+procs_blocked 0    #当前被阻塞的任务的数目；
+softirq 4716836863 1 1187611957 607802 2236195931 32847459 0 26450454 691733359 0 541389900
+```
+**提示**：进程的详细信息，可以通过`cat /proc/$PID/status`命令查看。
+
 **查看每个CPU统计信息**  
 多处理器统计信息工具，能够报告每个CPU的统计信息。
-```
-mpstat -P ALL 1
+```shell
+$ mpstat -P ALL 1
 Linux 2.6.32-573.el6.x86_64 (zbredis-30104)     09/14/2017  _x86_64_    (12 CPU)
  
 03:14:03 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest   %idle
@@ -121,13 +138,13 @@ Linux 2.6.32-573.el6.x86_64 (zbredis-30104)     09/14/2017  _x86_64_    (12 CPU)
 Linux 作为一个多任务操作系统，将每个 CPU 的时间划分为很短的时间片，再通过调度器轮流分配给各个任务使用
 通过实先定义的节拍率（内核用赫兹HZ标示）触发时间判断（全局变量jiffies记录）来进行维护 CPU 。节拍率是内核态运行，属于内核空间节拍率（可设置为 100、250、1000 等
 ），而用户空间节拍率( USER_HZ)是一个固定设置（总是为100）。
-```
+```shell
 $ grep 'CONFIG_HZ=' /boot/config-$(uname -r)    # 内核空间节拍率值
 CONFIG_HZ=1000
 ```
 
 **方式一. perf 命令使用**
-```
+```shell
 $ perf top
 Samples: 833  of event 'cpu-clock', Event count (approx.): 97742399
 Overhead  Shared Object       Symbol
@@ -150,8 +167,8 @@ $ grep $func_name -r $/code_path/
 **方法二. Java 应用通过 jstat 命令**
 
 查找 PID 消耗 cpu 最高的进程号 
-```
-# 显示进程运行信息列表，按 P 安装 cpu 使用率排序
+```shell
+# 显示进程运行信息列表，按 P 按照 cpu 使用率排序
 $ top -c
 Tasks: 120 total,   1 running, 119 sleeping,   0 stopped,   0 zombie
 %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
@@ -163,10 +180,9 @@ KiB Swap:        0 total,        0 free,        0 used.   538608 avail Mem
 ```
 
 查找 PID 消耗 cpu 最高的线程号
-```
-# 显示进程运行信息列表，按 P 安装 cpu 使用率排序
+```shell
+# 显示进程运行信息列表，按 P 按照 cpu 使用率排序
 $ top -Hp 10617
-top -Hp 10617
 top - 03:30:57 up 152 days,  2:00,  1 user,  load average: 0.00, 0.01, 0.00
 Threads:  41 total,   4 running,  37 sleeping,   0 stopped,   0 zombie
 %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
