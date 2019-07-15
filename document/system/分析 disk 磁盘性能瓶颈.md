@@ -25,21 +25,26 @@
  * 同样的，为了优化块设备的访问效率，使用缓冲区来缓存块设备的数据。
 
 **磁盘空间**
-```
+
+```shell
 $ df -h /dev/sda1   # 查看磁盘空间使用情况
 $ df -i /dev/sda1   # 查看磁盘 inode 情况
 ```
 
-**缓存**  
-此时可以通过 free 或 vmstat 来观察页缓存的大小。但 free 属于的 Cache 是页缓存和可回收 slab 缓存的总和； 
-```
+**缓存**
+
+此时可以通过`free`或`vmstat`来观察页缓存的大小。但`free`属于的`Cache`是页缓存和可回收`slab`缓存的总和； 
+
+```shell
 $ cat /proc/meminfo | grep -E "SReclaimable|Cached" 
 Cached:           748316 kB 
 SwapCached:            0 kB 
 SReclaimable:     179508 kB 
 ```
-而 `/proc/slabinfo` 能够具体到每一种 slab 缓存。
-```
+
+而`/proc/slabinfo`能够具体到每一种`slab`缓存。
+
+```shell
 $ cat /proc/slabinfo | grep -E '^#|dentry|inode' 
 # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> : tunables <limit> <batchcount> <sharedfactor> : slabdata <active_slabs> <num_slabs> <sharedavail> 
 xfs_inode              0      0    960   17    4 : tunables    0    0    0 : slabdata      0      0      0 
@@ -51,8 +56,10 @@ proc_inode_cache    3560   4080    680   12    2 : tunables    0    0    0 : sla
 inode_cache        25172  25818    608   13    2 : tunables    0    0    0 : slabdata   1986   1986      0 
 dentry             76050 121296    192   21    1 : tunables    0    0    0 : slabdata   5776   5776      0 
 ```
+
 由于 `/proc/slabinfo` 输出信息太多。在实际生产中，建议使用 slabtop 命令。
-```
+
+```shell
 # 按下 c 按照缓存大小排序，按下 a 按照活跃对象数排序 
 $ slabtop 
 Active / Total Objects (% used)    : 277970 / 358914 (77.4%) 
@@ -89,8 +96,8 @@ Linux 内核支持以下 4 种 I/O 调度算法，如下所示：
  * 响应时间，是指 I/O 请求发出到收到响应时间的间隔时间。
 
 ## 磁盘 I/O 观测
-首先观测每块磁盘的使用情况。`iostat` 是最常用的磁盘 I/O 性能观测工具，也可以通过 `/proc/diskstats` 文件进行查看。 
-```
+首先观测每块磁盘的使用情况。`iostat`是最常用的磁盘 I/O 性能观测工具，也可以通过`/proc/diskstats`文件进行查看。 
+```shell
 # -d -x 表示显示所有磁盘 I/O 的指标
 $ iostat -d -x 1 
 Device            r/s     w/s     rkB/s     wkB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util 
@@ -112,7 +119,7 @@ sdb              0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.0
 
 ## 进程 I/O 观测
 `iostat` 只能够看到磁盘整体的 I/O 性能，而 `pidstat` 和 `iotop` 可以观察进程的 I/O 情况。
-```
+```shell
 $ pidstat -d 1 
 13:39:51      UID       PID   kB_rd/s   kB_wr/s kB_ccwr/s iodelay  Command 
 13:39:52      102       916      0.00      4.00      0.00       0  rsyslogd
@@ -124,7 +131,7 @@ $ pidstat -d 1
 > * iodelay，块 I/O 延迟，包括等待同步 I/O 和换入块 I/O 结束的时间，单位是时钟固定周期；
 
 `iotop` 根据 I/O 大小对进程排序。
-```
+```shell
 $ iotop
 Total DISK READ :       0.00 B/s | Total DISK WRITE :       7.85 K/s 
 Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s 
@@ -173,7 +180,7 @@ fio -name=write -direct=1 -iodepth=64 -rw=write -ioengine=libaio -bs=4k -size=1G
 * filename，表示文件路径。可以是磁盘路径，也可以是文件路径。在使用磁盘路径测试时，会破坏整个磁盘中的文件系统，所以在使用前，需要做好数据备份。
 
 fio 测试顺序读的报告示例，如下：
-```
+```shell
 read: (g=0): rw=read, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=64
 fio-3.1
 Starting 1 process
