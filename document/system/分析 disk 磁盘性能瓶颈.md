@@ -145,7 +145,7 @@ Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
 ## 磁盘性能基准测试
 fio（flexible I/O test）是最常用的文件系统和磁盘 I/O 性能基准测试工具。它提供大量的可定制化选项，可用用来测试裸盘或者文件系统在各种场景下的 I/O 性能，包括不同块大小、不同 I/O 引擎以及是否使用缓存等场景。具体实例如下：
 
-```
+```shell
 # 随机读
 fio -name=randread -direct=1 -iodepth=64 -rw=randread -ioengine=libaio -bs=4k -size=1G -numjobs=1 -runtime=1000 -group_reporting -filename=/dev/sdb
 
@@ -163,7 +163,13 @@ fio -name=write -direct=1 -iodepth=64 -rw=write -ioengine=libaio -bs=4k -size=1G
 * iodepth，表示使用异步 I/O （asynchronous I/O，简称AIO）时，同时出发的 I/O 请求上限。
 * rw，表示 I/O 模式。read/write 表示为顺序读/写。而 randread/randwrite 则分别表示随机读/写。
 * ioengine，表示 I/O 引擎，它支持同步（sync）、异步（libaio)、内存映射（mmap）、网络（net）等各种 I/O 引擎。
-* bs，表示 I/O 的大小。
+* bs，表示 I/O 的大小，表示单次I/O的块文件大小为4 KB。未指定该参数时的默认大小也是4 KB。
+测试IOPS时，建议将bs设置为一个比较小的值，如本示例中的4k。
+测试吞吐量时，建议将bs设置为一个较大的值，如本示例中的1024k。
+* size，表示测试文件大小为1GiB。
+* numjobs，表示测试线程数为1。
+* runtime，表示测试时间为1000秒。未配置，则持续将前述size指定大小的文件，以每次bs值为分块大小写完。
+* group_reporting，表示测试结果里汇总每个进程的统计信息，而非以不同的job汇总展示信息。
 * filename，表示文件路径。可以是磁盘路径，也可以是文件路径。在使用磁盘路径测试时，会破坏整个磁盘中的文件系统，所以在使用前，需要做好数据备份。
 
 fio 测试顺序读的报告示例，如下：
