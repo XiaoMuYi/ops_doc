@@ -74,3 +74,71 @@
 
 504 说明有慢查询`php-fpm`可能还在运行，由于`nginx`本身的超时设置已经主动断开。
 
+## 3.关于HTTPS
+
+### 什么叫安全通信？
+
+既然`http`不够安全，那么如何才算安全呢？通常认为，如果通信过程具备四个特性：传输机密性、数据完整性、身份认证、不可否认，就可以认为是安全的。
+
+### 什么是HTTPS？
+
+`https`，默认端口为 443。`https`把`http`下层的传输协议由`TCP/IP`换成`SSL/TLS`，由`HTTP over TCP/IP`变成`HTTP over SSL/TLS`，让`HTTP`运行在安全的`SSL/TLS`协议上，收发报文不在使用`Socket API`，而是调用专门的安全接口。  
+
+`SSL`即安全套接层（Secure Socket Layer），在`OSI`模型中处于第五层（会话层）。`SSL`发展的 v3 时已经是一个非常好的安全通信协议，于是互联网工程组`IETF`在1999年把它改名为`TLS`（传输层安全，Transport Layer Security），正式标准化，版本号从 1.0 重新算起，所以 `TLS1.0`实际上是`SSLv3.1`。  
+
+目前应用最广泛的是`TLS`是 1.2，而之前的协议（TLS1.1/1.0 SSLv3/v2）各大浏览器将在2020年左右不在支持。`TLS`由记录协议、握手协议、警告协议、变更密码规范协议、扩展协议等多种协议组合而成，综合使用对称加密、非对称加密、身份认证等许多密码学技术。浏览器和服务器在使用`TLS`建立连接时需要选择一种恰当的加密算法来实现安全通信，这些算法的组合被称为“密码套件”。  
+
+`TLS 1.2`，客户端和服务器都支持非常多的加密套件。比如"ECDHE-RSA-AES256-GCM-SHA384"，它的基本的形式是“密钥交换算法 + 签名算法 + 对称加密算法 + 摘要算法”。  
+
+大概意思就是，握手时使用`ECDHE`算法进行秘钥交换，使用`RSA`签名和身份认证，握手后的通信使用`AES`对称算法，秘钥长度为 256位，分组模式是`GCM`，摘要算法`SHA384`用户消息认证和产生随机数。  
+
+
+### OpenSSL
+
+`OpenSSL`是从另一个开源库`SSLeay`发展而来。目前主要有`1.0.2`、`1.1.0`和`1.1.1`三个主要分支，前两个将不再维护。它还有一些代码分支，比如`Google`的`BoringSSL`、`OpenBSD`的`LibreSSL`，这些分支在原有基础上删除一些老旧代码，并新增一些特性。  
+
+`OpenSSL`里的密码套件定义与`TLS`略有不同，`TLS`里的形式是"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"，加了前缀`TLS`，并用`WITH`分开了握手和通信的算法。
+
+## 4.优化HTTPS
+
+目前流行的`AES`、`ChaCha20`性能都很好，还有硬件优化，报文传输的性能损耗基本可以忽略不计。关于`https`优化建议从如下几点入手：
+
+ * 硬件优化，由于`https`是计算密集型，此时可以选择更快的`CPU`，最好支持`AES`优化。也可以选择`SSL`加速卡，加解密时直接调用它的`API`，阿里的`Tengine`就是基于Intel QAT加速卡。因为`SSL`加速卡存在一些缺点，因此也可以选择`SSL`加速服务器。
+
+ * 软件优化，比如`Linux`内核可以选择4.x以上，选择`Nginx 1.16`以上版本，将`OpenSSL`由 1.0.1 升级到 1.1.0/1.1.1。
+
+ * 协议优化，尽量采用 `TLS 1.3`，它简化了握手过程并且更加安全。`Nginx`进行如下配置：
+```shell
+# 选择最优的密码套件和椭圆曲线；
+ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:EECDH+CHACHA20;
+ssl_ecdh_curve X25519:P-256;
+```
+
+ * 证书优化，服务器的证书最好选择椭圆曲线（ECDSA）证书而不是`RSA`证书，它既能够节约带宽也能减少客户端的运算量。
+
+ * 会话复用，分为2种，第一种基于`session ID`，最早也是最广的会话复用技术，缺点就是服务器必须保存每个客户端的会话数据，当客户端达到千万级别是存储就会成为瓶颈。第二种基于`session Ticket`，类似`http`的`cookie`，存储的责任由服务器转移到了客户端，服务器加密会话信息，用`New Session Ticket`消息发给客户端让其保存。
+
+ * 预共享密钥（Pre-shared key），在TLS 1.3中已经将`session ID`和`session Ticket`移除，只能使用`PSK`实现会话复用。
+
+关于`Nginx`证书配置参考：
+```shell
+listen                     443 ssl;
+ssl_certificate            xxx_rsa.crt;
+ssl_certificate_key        xxx_rsa.key;
+
+# 将http都跳转至https；
+return 301 https://$host$request_uri;             # 永久重定向
+rewrite ^  https://$host$request_uri permanent;   # 永久重定向
+
+# 强制指定tls协议为1.2
+ssl_protocols              TLSv1.2 TLSv1.3;
+
+# 打开session_ticket会话复用；
+ssl_session_timeout        5m;
+ssl_session_tickets        on;
+ssl_session_ticket_key     ticket.key
+
+# 建议以服务器的套件优先配置，这里只是举例说明；
+ssl_prefer_server_ciphers   on;
+ssl_ciphers   ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-CHACHA20-POLY1305:ECDHE+AES128:!MD5:!SHA1;
+```
