@@ -236,9 +236,9 @@ $ docker run --restart=always -it -d \
          grafana/grafana:6.0.2
 ```
 
-参考链接：
-https://ervikrant06.github.io/kubernetes/Kuberenetes-prometheus-persistent-storage/
-https://multinode-kubernetes-cluster.readthedocs.io/en/latest/03-k8s-helm_and_packages.html
-https://github.com/coreos/prometheus-operator/issues/992
-https://github.com/coreos/prometheus-operator/issues/1121
-https://github.com/coreos/prometheus-operator/issues/1637
+参考链接：  
+https://ervikrant06.github.io/kubernetes/Kuberenetes-prometheus-persistent-storage/  
+https://multinode-kubernetes-cluster.readthedocs.io/en/latest/03-k8s-helm_and_packages.html  
+https://github.com/coreos/prometheus-operator/issues/992  
+https://github.com/coreos/prometheus-operator/issues/1121  
+https://github.com/coreos/prometheus-operator/issues/1637  
