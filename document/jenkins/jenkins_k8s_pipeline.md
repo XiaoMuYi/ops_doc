@@ -6,6 +6,11 @@
 
 为什么要使用`pipeline`？对于实践微服务的团队，产品有很多服务组成，传统的在`jenkins`中集中进行`job`配置的方式会成为瓶颈，微服务团队会将`CI Job`的配置和服务的发布交给具体负责某个服务的团队，这正需要`pipeline as Code`；除此之外，一次产品的发布会涉及到多个服务的协同发布，用单个`CI Job`实现起来会十分困难，使用`pipeline`可以很好的完成这个需求。
 
+```shell
+$ cd {Jenkins工作目录}/update
+$ sed -i 's/http:\/\/updates.jenkins-ci.org\/download/https:\/\/mirrors.tuna.tsinghua.edu.cn\/jenkins/g' default.json
+$ sed -i 's/http:\/\/www.google.com/https:\/\/www.baidu.com/g' default.json
+```
 ### 1.1 基本概念
 
 `node`：一个`node`就是一个`jenkins`节点，可以是`master`，也可以是`slave`，`slave`是`pipeline`中具体`step`的运行环境。
@@ -15,6 +20,7 @@
 `stage`：一个`pipeline`有多个`stage`组成，每个`stage`包含一组`step`。注意一个`stage`可以跨多个`node`执行，即`stage`实际上是`step`的逻辑分组。
 
 将`node`、`stage`、`step`的`Groovy DSL`写在一个`jenkinsfile`文件中，`jenkinsfile`会被放到代码库的根目录下。
+
 
 ### 1.2 常用step
 

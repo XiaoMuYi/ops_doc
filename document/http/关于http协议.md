@@ -142,3 +142,12 @@ ssl_session_ticket_key     ticket.key
 ssl_prefer_server_ciphers   on;
 ssl_ciphers   ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-CHACHA20-POLY1305:ECDHE+AES128:!MD5:!SHA1;
 ```
+
+### http/2 有哪些特性
+* 1. http/2 之后协议取消了小版本号，所以http/2以后的命名不在为http/2.0、http/2.1；
+* 2. http/2 在语义上兼容http/1，保留了请求方法、URI等传统概念；
+* 3. http/2 使用`HPACK`算法压缩头部信息，消除冗余数据节约带宽；
+* 4. http/2 消息不再是`Header+Body`的形式，而是分散为多个二进制的帧；
+* 5. http/2 使用“虚拟的流”（是指流实际上是多个同一序号的帧，并没有真正的流数据结构，这与连接不同。）传输消息，解决了困扰多年的“队头阻塞”问题，同事实现“多路复用”，提高连接利用率；
+* 6. 在安全性方面，至少要求为`TLS/1.2`，而且禁用了很多不安全的密码套件；
+
